@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {SafeTransferLib} from "@solmate/utils/SafeTransferLib.sol";
-
 import {Errors, Upgradeable} from "src/utils/Upgradeable.sol";
 import {IInfraredBERA} from "src/interfaces/IInfraredBERA.sol";
 import {IInfraredBERAFeeReceivor} from
@@ -11,17 +10,20 @@ import {IInfrared} from "src/interfaces/IInfrared.sol";
 import {InfraredBERAConstants} from "./InfraredBERAConstants.sol";
 
 /// @title InfraredBERAFeeReceivor
-/// @notice Fee receivor receives coinbase priority fees + MEV credited to contract on EL upon block validation
-///     also receives collected validator bribe share.
-/// @dev CL validators should set fee_recipient to the address of this contract
+/// @notice Receivor for fees from InfraredBERA from tips and share of the proof-of-liquidity incentive system.
+/// @dev Validators need to set this address as their coinbase(fee_recepient on most clients).
 contract InfraredBERAFeeReceivor is Upgradeable, IInfraredBERAFeeReceivor {
-    /// @inheritdoc IInfraredBERAFeeReceivor
+    /// @notice The address of the `InfraredBERA.sol` contract.
     address public InfraredBERA;
 
+    /// @notice The `Infrared.sol` contract address.
     IInfrared public infrared;
 
-    /// @inheritdoc IInfraredBERAFeeReceivor
+    /// @notice Accumulated protocol fees in contract to be claimed.
     uint256 public shareholderFees;
+
+    /// @notice Reserve storage slots for future upgrades for safety
+    uint256[40] private __gap;
 
     /// @notice Initializer function (replaces constructor)
     /// @param _gov Address for admin / gov to upgrade
@@ -48,7 +50,9 @@ contract InfraredBERAFeeReceivor is Upgradeable, IInfraredBERAFeeReceivor {
         _grantRole(KEEPER_ROLE, _keeper);
     }
 
-    /// @inheritdoc IInfraredBERAFeeReceivor
+    /// @notice Amount of BERA swept to InfraredBERA and fees taken for protool on next call to sweep
+    /// @return amount THe amount of BERA forwarded to InfraredBERA on next sweep.
+    /// @return fees The protocol fees taken on next sweep.
     function distribution()
         public
         view
@@ -65,13 +69,11 @@ contract InfraredBERAFeeReceivor is Upgradeable, IInfraredBERAFeeReceivor {
         }
     }
 
-    /// @inheritdoc IInfraredBERAFeeReceivor
+    /// @notice Sweeps accumulated coinbase priority fees + MEV to InfraredBERA to autocompound principal
+    /// @return amount The amount of BERA forwarded to InfraredBERA.
+    /// @return fees The total fees taken.
     function sweep() external returns (uint256 amount, uint256 fees) {
         (amount, fees) = distribution();
-        // do nothing if InfraredBERA deposit would revert
-        uint256 min = InfraredBERAConstants.MINIMUM_DEPOSIT
-            + InfraredBERAConstants.MINIMUM_DEPOSIT_FEE;
-        if (amount < min) return (0, 0);
 
         // add to protocol fees and sweep amount back to ibera to deposit
         if (fees > 0) shareholderFees += fees;
@@ -79,25 +81,22 @@ contract InfraredBERAFeeReceivor is Upgradeable, IInfraredBERAFeeReceivor {
         emit Sweep(InfraredBERA, amount, fees);
     }
 
-    /// @inheritdoc IInfraredBERAFeeReceivor
+    /// @notice Collects accumulated shareholder fees
+    /// @dev Reverts if msg.sender is not `InfraredBera.sol` contract
+    /// @return sharesMinted The amount of iBERA shares minted and sent to the `Infrared.sol`
     function collect() external returns (uint256 sharesMinted) {
         if (msg.sender != InfraredBERA) revert Errors.Unauthorized(msg.sender);
-        uint256 shf = shareholderFees;
-        if (shf == 0) return 0;
+        uint256 _shareholderFees = shareholderFees;
+        if (_shareholderFees == 0) return 0;
 
-        uint256 min = InfraredBERAConstants.MINIMUM_DEPOSIT
-            + InfraredBERAConstants.MINIMUM_DEPOSIT_FEE;
-        if (shf < min) {
-            revert Errors.InvalidAmount();
-        }
+        delete shareholderFees;
+        sharesMinted = IInfraredBERA(InfraredBERA).mint{value: _shareholderFees}(
+            address(infrared)
+        );
 
-        if (shf > 0) {
-            delete shareholderFees;
-            (, sharesMinted) =
-                IInfraredBERA(InfraredBERA).mint{value: shf}(address(infrared));
-        }
-        emit Collect(address(infrared), shf, sharesMinted);
+        emit Collect(address(infrared), _shareholderFees, sharesMinted);
     }
 
+    /// @notice Fallback function to receive BERA
     receive() external payable {}
 }

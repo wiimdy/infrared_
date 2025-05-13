@@ -62,16 +62,20 @@ contract BribeCollectorV1_2 is InfraredUpgradeable, IBribeCollector {
 
         // transfer price of claiming tokens (payoutAmount) from the sender to this contract
         ERC20(payoutToken).safeTransferFrom(
-            msg.sender, address(this), payoutAmount
+            msg.sender,
+            address(this),
+            payoutAmount
         );
         // set the allowance of the payout token to the infrared contract to be sent to
         // validator distribution contract
         ERC20(payoutToken).safeApprove(
-            address(infrared), ERC20(payoutToken).balanceOf(address(this))
+            address(infrared),
+            ERC20(payoutToken).balanceOf(address(this))
         );
         // Callback into infrared post auction to split amount to vaults and protocol
         infrared.collectBribes(
-            payoutToken, ERC20(payoutToken).balanceOf(address(this))
+            payoutToken,
+            ERC20(payoutToken).balanceOf(address(this))
         );
         // payoutAmount will be transferred out at this point
 

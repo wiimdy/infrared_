@@ -4,8 +4,7 @@ pragma solidity 0.8.26;
 import {ERC20} from "@solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "@solmate/utils/SafeTransferLib.sol";
 
-import {ReentrancyGuardUpgradeable} from
-    "@openzeppelin-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import {InfraredUpgradeable} from "src/core/InfraredUpgradeable.sol";
 import {Errors} from "src/utils/Errors.sol";
@@ -15,8 +14,7 @@ import {IVoter} from "src/voting/interfaces/IVoter.sol";
 import {IVotingEscrow} from "src/voting/interfaces/IVotingEscrow.sol";
 
 import {BribeVotingReward} from "src/voting/rewards/BribeVotingReward.sol";
-import {VelodromeTimeLibrary} from
-    "src/voting/libraries/VelodromeTimeLibrary.sol";
+import {VelodromeTimeLibrary} from "src/voting/libraries/VelodromeTimeLibrary.sol";
 
 import {IInfrared} from "src/interfaces/IInfrared.sol";
 
@@ -77,12 +75,12 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
     modifier onlyNewEpoch(uint256 _tokenId) {
         // ensure new epoch since last vote
         if (
-            VelodromeTimeLibrary.epochStart(block.timestamp)
-                <= lastVoted[_tokenId]
+            VelodromeTimeLibrary.epochStart(block.timestamp) <=
+            lastVoted[_tokenId]
         ) revert AlreadyVotedOrDeposited();
         if (
-            block.timestamp
-                <= VelodromeTimeLibrary.epochVoteStart(block.timestamp)
+            block.timestamp <=
+            VelodromeTimeLibrary.epochVoteStart(block.timestamp)
         ) revert DistributeWindow();
         _;
     }
@@ -98,11 +96,9 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     /// @inheritdoc IVoter
-    function epochVoteStart(uint256 _timestamp)
-        external
-        pure
-        returns (uint256)
-    {
+    function epochVoteStart(
+        uint256 _timestamp
+    ) external pure returns (uint256) {
         return VelodromeTimeLibrary.epochVoteStart(_timestamp);
     }
 
@@ -116,9 +112,6 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
      * @dev Reverts if infrared address is zero
      * @param _infrared Address of the Infrared contract
      */
-    constructor(address _infrared) InfraredUpgradeable(_infrared) {
-        if (_infrared == address(0)) revert Errors.ZeroAddress();
-    }
 
     /**
      * @notice Initializes the Voter contract with the voting escrow and fee vault
@@ -127,10 +120,11 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
      * @param _gov Address of the governance multisig
      * @param _keeper Address of the keeper
      */
-    function initialize(address _ve, address _gov, address _keeper)
-        external
-        initializer
-    {
+    function initialize(
+        address _ve,
+        address _gov,
+        address _keeper
+    ) external initializer {
         if (_ve == address(0)) revert Errors.ZeroAddress();
         ve = _ve;
         maxVotingNum = 30;
@@ -148,7 +142,7 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
 
         // init upgradeable components
         __ReentrancyGuard_init();
-        __InfraredUpgradeable_init();
+        __InfraredUpgradeable_init(_keeper);
     }
 
     /// @inheritdoc IVoter
@@ -162,11 +156,9 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     /// @inheritdoc IVoter
-    function reset(uint256 _tokenId)
-        external
-        onlyNewEpoch(_tokenId)
-        nonReentrant
-    {
+    function reset(
+        uint256 _tokenId
+    ) external onlyNewEpoch(_tokenId) nonReentrant {
         if (!IVotingEscrow(ve).isApprovedOrOwner(msg.sender, _tokenId)) {
             revert NotApprovedOrOwner();
         }
@@ -213,8 +205,8 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
     /// @inheritdoc IVoter
     function poke(uint256 _tokenId) external nonReentrant {
         if (
-            block.timestamp
-                <= VelodromeTimeLibrary.epochVoteStart(block.timestamp)
+            block.timestamp <=
+            VelodromeTimeLibrary.epochVoteStart(block.timestamp)
         ) revert DistributeWindow();
         uint256 _weight = IVotingEscrow(ve).balanceOfNFT(_tokenId);
         _poke(_tokenId, _weight);
@@ -283,13 +275,13 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
                 if (_isPoke) {
                     emit SkipKilledBribeVault(_stakingToken, _tokenId);
                     continue; // Skip this token without affecting totalWeight and usedWeights
-                        // this effectively means user is using less than 100% of their voting power
+                    // this effectively means user is using less than 100% of their voting power
                 }
                 revert BribeVaultNotAlive(_bribeVault);
             }
 
-            uint256 _stakingTokenWeight =
-                (_weights[i] * _weight) / _totalVoteWeight;
+            uint256 _stakingTokenWeight = (_weights[i] * _weight) /
+                _totalVoteWeight;
             if (votes[_tokenId][_stakingToken] != 0) revert NonZeroVotes();
             if (_stakingTokenWeight == 0) revert ZeroBalance();
 
@@ -340,8 +332,8 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
         }
         uint256 _timestamp = block.timestamp;
         if (
-            (_timestamp > VelodromeTimeLibrary.epochVoteEnd(_timestamp))
-                && !isWhitelistedNFT[_tokenId]
+            (_timestamp > VelodromeTimeLibrary.epochVoteEnd(_timestamp)) &&
+            !isWhitelistedNFT[_tokenId]
         ) {
             revert NotWhitelistedNFT();
         }
@@ -351,11 +343,10 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     /// @inheritdoc IVoter
-    function depositManaged(uint256 _tokenId, uint256 _mTokenId)
-        external
-        nonReentrant
-        onlyNewEpoch(_tokenId)
-    {
+    function depositManaged(
+        uint256 _tokenId,
+        uint256 _mTokenId
+    ) external nonReentrant onlyNewEpoch(_tokenId) {
         if (!IVotingEscrow(ve).isApprovedOrOwner(msg.sender, _tokenId)) {
             revert NotApprovedOrOwner();
         }
@@ -369,17 +360,17 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
         }
         lastVoted[_tokenId] = _timestamp;
         IVotingEscrow(ve).depositManaged(_tokenId, _mTokenId);
-        uint256 _weight =
-            IVotingEscrow(ve).balanceOfNFTAt(_mTokenId, block.timestamp);
+        uint256 _weight = IVotingEscrow(ve).balanceOfNFTAt(
+            _mTokenId,
+            block.timestamp
+        );
         _poke(_mTokenId, _weight);
     }
 
     /// @inheritdoc IVoter
-    function withdrawManaged(uint256 _tokenId)
-        external
-        nonReentrant
-        onlyNewEpoch(_tokenId)
-    {
+    function withdrawManaged(
+        uint256 _tokenId
+    ) external nonReentrant onlyNewEpoch(_tokenId) {
         if (!IVotingEscrow(ve).isApprovedOrOwner(msg.sender, _tokenId)) {
             revert NotApprovedOrOwner();
         }
@@ -388,8 +379,10 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
         // If the NORMAL veNFT was the last tokenId locked into _mTokenId, reset vote as there is
         // no longer voting power available to the _mTokenId.  Otherwise, updating voting power to accurately
         // reflect the withdrawn voting power.
-        uint256 _weight =
-            IVotingEscrow(ve).balanceOfNFTAt(_mTokenId, block.timestamp);
+        uint256 _weight = IVotingEscrow(ve).balanceOfNFTAt(
+            _mTokenId,
+            block.timestamp
+        );
         if (_weight == 0) {
             _reset(_mTokenId);
             // clear out lastVoted to allow re-voting in the current epoch
@@ -429,8 +422,9 @@ contract Voter is IVoter, InfraredUpgradeable, ReentrancyGuardUpgradeable {
         }
 
         // adaptation to only create bribe voting rewards
-        address _bribeVault =
-            address(new BribeVotingReward(address(this), _rewards));
+        address _bribeVault = address(
+            new BribeVotingReward(address(this), _rewards)
+        );
 
         bribeVaults[_stakingToken] = _bribeVault;
 

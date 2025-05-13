@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {SafeTransferLib} from "@solmate/utils/SafeTransferLib.sol";
-
 import {Upgradeable} from "src/utils/Upgradeable.sol";
 import {IInfraredBERAClaimor} from "src/interfaces/IInfraredBERAClaimor.sol";
 import {IInfraredBERA} from "src/interfaces/IInfraredBERA.sol";
@@ -16,6 +15,9 @@ contract InfraredBERAClaimor is Upgradeable, IInfraredBERAClaimor {
     mapping(address => uint256) public claims;
 
     IInfraredBERA public ibera;
+
+    /// Reserve storage slots for future upgrades for safety
+    uint256[40] private __gap;
 
     /// @notice Initializer function (replaces constructor)
     /// @param _gov Address of the initial admin / gov

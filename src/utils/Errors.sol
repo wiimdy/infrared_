@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
 library Errors {
@@ -9,6 +9,10 @@ library Errors {
     error InvalidArrayLength();
     error AlreadySet();
     error NotPauser();
+    error InsufficientBalance();
+    error InvalidFeeToken();
+    error FeeTokenNotWhitelisted();
+    error InsufficientFeeTokenBalance();
 
     // ValidatorSet errors.
     error ValidatorAlreadyExists();
@@ -53,6 +57,7 @@ library Errors {
     error ETHTransferFailed();
     error TokensReservedForProtocolFees();
     error NoRewardsToClaim();
+    error VaultAlreadyUpToDate();
 
     // iBERA erros
     error InvalidAmount();

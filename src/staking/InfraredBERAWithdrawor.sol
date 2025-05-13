@@ -2,14 +2,12 @@
 pragma solidity 0.8.26;
 
 import {SafeTransferLib} from "@solmate/utils/SafeTransferLib.sol";
-
 import {Errors, Upgradeable} from "src/utils/Upgradeable.sol";
 import {IInfraredBERA} from "src/interfaces/IInfraredBERA.sol";
 import {IInfraredBERADepositor} from "src/interfaces/IInfraredBERADepositor.sol";
 import {IInfraredBERAClaimor} from "src/interfaces/IInfraredBERAClaimor.sol";
 import {IInfraredBERAWithdrawor} from
     "src/interfaces/IInfraredBERAWithdrawor.sol";
-
 import {InfraredBERAConstants} from "./InfraredBERAConstants.sol";
 
 /// @title InfraredBERAWithdrawor
@@ -52,6 +50,9 @@ contract InfraredBERAWithdrawor is Upgradeable, IInfraredBERAWithdrawor {
     uint256 public nonceSubmit;
     /// @inheritdoc IInfraredBERAWithdrawor
     uint256 public nonceProcess;
+
+    /// Reserve storage slots for future upgrades for safety
+    uint256[40] private __gap;
 
     function initializeV2(address _claimor, address _withdraw_precompile)
         external
@@ -100,10 +101,7 @@ contract InfraredBERAWithdrawor is Upgradeable, IInfraredBERAWithdrawor {
         }
         if (
             (receiver != depositor && amount == 0)
-                || (
-                    receiver == depositor
-                        && amount <= InfraredBERAConstants.MINIMUM_DEPOSIT_FEE
-                ) || amount > IInfraredBERA(InfraredBERA).confirmed()
+                || amount > IInfraredBERA(InfraredBERA).confirmed()
         ) {
             revert Errors.InvalidAmount();
         }
@@ -229,9 +227,7 @@ contract InfraredBERAWithdrawor is Upgradeable, IInfraredBERAWithdrawor {
         if (r.receiver == depositor) {
             // queue up rebalance to depositor
             rebalancing -= amount;
-            IInfraredBERADepositor(r.receiver).queue{value: amount}(
-                amount - InfraredBERAConstants.MINIMUM_DEPOSIT_FEE
-            );
+            IInfraredBERADepositor(r.receiver).queue{value: amount}();
         } else {
             // queue up receiver claim to claimor
             IInfraredBERAClaimor(claimor).queue{value: amount}(r.receiver);
@@ -256,12 +252,8 @@ contract InfraredBERAWithdrawor is Upgradeable, IInfraredBERAWithdrawor {
         // forced exit always withdraw entire stake of validator
         uint256 amount = IInfraredBERA(InfraredBERA).stakes(pubkey);
 
-        // do nothing if InfraredBERA deposit would revert
-        uint256 min = InfraredBERAConstants.MINIMUM_DEPOSIT
-            + InfraredBERAConstants.MINIMUM_DEPOSIT_FEE;
-        if (amount < min) return;
         // revert if insufficient balance
-        if (amount > address(this).balance) revert Errors.InvalidAmount();
+        if (amount > reserves()) revert Errors.InvalidAmount();
 
         // todo: verfiy forced withdrawal against beacon roots
 
@@ -271,7 +263,7 @@ contract InfraredBERAWithdrawor is Upgradeable, IInfraredBERAWithdrawor {
         // re-stake amount back to ibera depositor
         IInfraredBERADepositor(IInfraredBERA(InfraredBERA).depositor()).queue{
             value: amount
-        }(amount - InfraredBERAConstants.MINIMUM_DEPOSIT_FEE);
+        }();
 
         emit Sweep(IInfraredBERA(InfraredBERA).depositor(), amount);
     }
