@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import {IRewardVault as IBerachainRewardsVault} from
-    "@berachain/pol/interfaces/IRewardVault.sol";
+import {IRewardVault as IBerachainRewardsVault} from "@berachain/pol/interfaces/IRewardVault.sol";
 import {ERC20} from "@solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "@solmate/utils/SafeTransferLib.sol";
 import {IInfraredDistributor} from "src/interfaces/IInfraredDistributor.sol";
@@ -16,8 +15,7 @@ import {IVoter} from "src/voting/interfaces/IVoter.sol";
 import {DataTypes} from "src/utils/DataTypes.sol";
 import {IWBERA} from "src/interfaces/IWBERA.sol";
 import {IInfraredBGT} from "src/interfaces/IInfraredBGT.sol";
-import {IInfraredGovernanceToken} from
-    "src/interfaces/IInfraredGovernanceToken.sol";
+import {IInfraredGovernanceToken} from "src/interfaces/IInfraredGovernanceToken.sol";
 import {IInfraredBERA} from "src/interfaces/IInfraredBERA.sol";
 import {Errors} from "src/utils/Errors.sol";
 
@@ -82,25 +80,34 @@ library RewardsLib {
         if (iBERAShares == 0) return 0;
 
         // The total fee rate to charge on iBERA harvest rewards.
-        uint256 feeTotal =
-            $.fees[uint256(ConfigTypes.FeeType.HarvestOperatorFeeRate)];
+        uint256 feeTotal = $.fees[
+            uint256(ConfigTypes.FeeType.HarvestOperatorFeeRate)
+        ];
 
         // The rate to charge for the protocol treasury on total fees.
-        uint256 feeProtocol =
-            $.fees[uint256(ConfigTypes.FeeType.HarvestOperatorProtocolRate)];
+        uint256 feeProtocol = $.fees[
+            uint256(ConfigTypes.FeeType.HarvestOperatorProtocolRate)
+        ];
 
-        // the recepient of the rewards is the total pool of operators which is aggregated in the `Distributor` smart contract.
+        // the recipient of the rewards is the total pool of operators which is aggregated in the `Distributor` smart contract.
         uint256 amountOperators;
         // The amount of rewards going to the voter contract
         uint256 amountVoters;
         /// The amount of rewards going to the protocol treasury
         uint256 amountProtocol;
-        (amountOperators, amountVoters, amountProtocol) =
-            chargedFeesOnRewards(iBERAShares, feeTotal, feeProtocol);
+        (amountOperators, amountVoters, amountProtocol) = chargedFeesOnRewards(
+            iBERAShares,
+            feeTotal,
+            feeProtocol
+        );
 
         // Distribute the fees for the protocol and voter amounts.
         _distributeFeesOnRewards(
-            $.protocolFeeAmounts, voter, ibera, amountVoters, amountProtocol
+            $.protocolFeeAmounts,
+            voter,
+            ibera,
+            amountVoters,
+            amountProtocol
         );
 
         // Send the rewards owed to the operators to the distributor.
@@ -113,11 +120,11 @@ library RewardsLib {
     }
 
     /// @notice Generic function to calculate the fees charged on rewards, returning the amount owed to the recipient, protocol, and voter.
-    /// @notice the recepient is the amount of rewards being sent forward into the protocol for example a vault
+    /// @notice the recipient is the amount of rewards being sent forward into the protocol for example a vault
     /// @param  amount          The amount of rewards to calculate fees on
     /// @param  totalFeeRate    The total fee rate to charge on rewards (protocol + voter)
     /// @param  protocolFeeRate The rate to charge for protocol fees
-    /// @return recepient       The amount of rewards to send to the recipient
+    /// @return recipient       The amount of rewards to send to the recipient
     /// @return voterFees       The amount of rewards to send to the voter
     /// @return protocolFees    The amount of rewards to send to the protocol
     function chargedFeesOnRewards(
@@ -127,7 +134,7 @@ library RewardsLib {
     )
         public
         pure
-        returns (uint256 recepient, uint256 voterFees, uint256 protocolFees)
+        returns (uint256 recipient, uint256 voterFees, uint256 protocolFees)
     {
         // if the total fee charged is 0, return the amount as is and 0 for the rest
         if (totalFeeRate == 0) return (amount, 0, 0);
@@ -136,14 +143,15 @@ library RewardsLib {
         uint256 totalFees = (amount * totalFeeRate) / UNIT_DENOMINATOR;
 
         // calculate the protocol fees = totalFees * protocolFeeRate
-        protocolFees = (amount * totalFeeRate * protocolFeeRate)
-            / (UNIT_DENOMINATOR * UNIT_DENOMINATOR);
+        protocolFees =
+            (amount * totalFeeRate * protocolFeeRate) /
+            (UNIT_DENOMINATOR * UNIT_DENOMINATOR);
 
         // calculate the voter fees = totalFees - protocolFees
         voterFees = totalFees - protocolFees;
 
         // deduct the total fees from the amount to get the recipient amount
-        recepient = amount - totalFees;
+        recipient = amount - totalFees;
     }
 
     /// @notice Distributes fees on rewards to the protocol, voter, and recipient.
@@ -194,7 +202,7 @@ library RewardsLib {
         if (_amount == 0) return;
 
         // add reward if not already added
-        (, uint256 _vaultRewardsDuration,,,,,) = _vault.rewardData(_token);
+        (, uint256 _vaultRewardsDuration, , , , , ) = _vault.rewardData(_token);
         if (_vaultRewardsDuration == 0) {
             _vault.addReward(_token, rewardsDuration);
         }
@@ -203,10 +211,17 @@ library RewardsLib {
         uint256 _amtProtocol;
 
         // calculate and distribute fees on rewards
-        (_amount, _amtVoter, _amtProtocol) =
-            chargedFeesOnRewards(_amount, _feeTotal, _feeProtocol);
+        (_amount, _amtVoter, _amtProtocol) = chargedFeesOnRewards(
+            _amount,
+            _feeTotal,
+            _feeProtocol
+        );
         _distributeFeesOnRewards(
-            $.protocolFeeAmounts, voter, _token, _amtVoter, _amtProtocol
+            $.protocolFeeAmounts,
+            voter,
+            _token,
+            _amtVoter,
+            _amtProtocol
         );
 
         // increase allowance then notify vault of new rewards
@@ -227,9 +242,10 @@ library RewardsLib {
     /// @notice The actuall calculation is done in the `harvestVault` function when BGT rewards are harvested and IR tokens are minted accordingly.
     /// @param $           The storage pointer for all rewards accumulators
     /// @param newRate The new IR minting rate out of UNIT_DENOMINATOR(1e6 being 100% or a 1:1 rate)
-    function updateIRMintRate(RewardsStorage storage $, uint256 newRate)
-        external
-    {
+    function updateIRMintRate(
+        RewardsStorage storage $,
+        uint256 newRate
+    ) external {
         $.irMintRate = newRate;
     }
 
@@ -292,10 +308,11 @@ library RewardsLib {
     /// @param ibera    The address of the InfraredBERA token
     ///
     /// @return bgtAmt  The amount of BGT rewards harvested
-    function harvestBase(address ibgt, address bgt, address ibera)
-        external
-        returns (uint256 bgtAmt)
-    {
+    function harvestBase(
+        address ibgt,
+        address bgt,
+        address ibera
+    ) external returns (uint256 bgtAmt) {
         // Since BGT balance has accrued to this contract, we check for what we've already accounted for
         uint256 minted = IInfraredBGT(ibgt).totalSupply();
 
@@ -363,16 +380,23 @@ library RewardsLib {
         IInfraredBGT(ibgt).mint(address(this), bgtAmt);
 
         // Calculate the voter and protocol fees to charge on the rewards
-        (uint256 _amt, uint256 _amtVoter, uint256 _amtProtocol) =
-        chargedFeesOnRewards(
-            bgtAmt,
-            $.fees[uint256(ConfigTypes.FeeType.HarvestVaultFeeRate)],
-            $.fees[uint256(ConfigTypes.FeeType.HarvestVaultProtocolRate)]
-        );
+        (
+            uint256 _amt,
+            uint256 _amtVoter,
+            uint256 _amtProtocol
+        ) = chargedFeesOnRewards(
+                bgtAmt,
+                $.fees[uint256(ConfigTypes.FeeType.HarvestVaultFeeRate)],
+                $.fees[uint256(ConfigTypes.FeeType.HarvestVaultProtocolRate)]
+            );
 
         // Distribute the fees on the rewards.
         _distributeFeesOnRewards(
-            $.protocolFeeAmounts, voter, ibgt, _amtVoter, _amtProtocol
+            $.protocolFeeAmounts,
+            voter,
+            ibgt,
+            _amtVoter,
+            _amtProtocol
         );
 
         // Send the post-fee rewards to the vault
@@ -390,7 +414,9 @@ library RewardsLib {
                 IInfraredGovernanceToken(ir).mint(address(this), irAmt);
                 {
                     // Check if IR is already a reward token in the vault
-                    (, uint256 IRRewardsDuration,,,,,) = vault.rewardData(ir);
+                    (, uint256 IRRewardsDuration, , , , , ) = vault.rewardData(
+                        ir
+                    );
                     if (IRRewardsDuration == 0) {
                         // Add IR as a reward token if not already added
                         vault.addReward(ir, rewardsDuration);
@@ -407,6 +433,108 @@ library RewardsLib {
                 emit ErrorMisconfiguredIRMinting(irAmt);
             }
         }
+    }
+
+    /// @notice Harvests berachain reward vault as operator for user.
+    /// @notice BGT transferred here, iBGT minted to user
+    /// @param vault            The address of the Berachain reward vault
+    /// @param bgt              The address of the BGT token
+    /// @param ibgt             The address of the InfraredBGT token
+    /// @param voter            The address of the voter (0 until IR token is live)
+    /// @param user             The address of the User to claim bgt on behalf of
+    ///
+    /// @return bgtAmt The amount of BGT rewards harvested = amount of iBGT minted
+    function harvestVaultForUser(
+        RewardsStorage storage $,
+        IBerachainRewardsVault vault,
+        address bgt,
+        address ibgt,
+        address voter,
+        address user
+    ) external returns (uint256 bgtAmt) {
+        // Ensure the vault is valid
+        if (address(vault) == address(0)) {
+            revert Errors.VaultNotSupported();
+        }
+
+        // check infrared is an operator for user
+        if (vault.operator(user) != address(this)) {
+            revert Errors.InvalidOperator();
+        }
+
+        // Record the BGT balance before claiming rewards since there could be base rewards that are in the balance.
+        uint256 balanceBefore = IBerachainBGT(bgt).balanceOf(address(this));
+
+        // Claim the BGT rewards on behalf of user.
+        vault.getReward(user, address(this));
+
+        // Calculate the amount of BGT rewards received
+        bgtAmt = IBerachainBGT(bgt).balanceOf(address(this)) - balanceBefore;
+
+        // If no BGT rewards were received, exit early
+        if (bgtAmt == 0) return bgtAmt;
+
+        // Mint InfraredBGT tokens equivalent to the BGT rewards
+        IInfraredBGT(ibgt).mint(address(this), bgtAmt);
+
+        // Calculate the voter and protocol fees to charge on the rewards
+        (
+            uint256 _amt,
+            uint256 _amtVoter,
+            uint256 _amtProtocol
+        ) = chargedFeesOnRewards(
+                bgtAmt,
+                $.fees[uint256(ConfigTypes.FeeType.HarvestVaultFeeRate)],
+                $.fees[uint256(ConfigTypes.FeeType.HarvestVaultProtocolRate)]
+            );
+
+        // Distribute the fees on the rewards.
+        _distributeFeesOnRewards(
+            $.protocolFeeAmounts,
+            voter,
+            ibgt,
+            _amtVoter,
+            _amtProtocol
+        );
+
+        // Send the post-fee ibgt to user
+        if (_amt > 0) {
+            ERC20(ibgt).safeTransfer(user, _amt);
+        }
+    }
+
+    /// @notice View rewards to claim for berachain reward vault as operator for user.
+    /// @param vault            The address of the Berachain reward vault
+    /// @param user             The address of the User to claim bgt on behalf of
+    ///
+    /// @return iBgtAmount The amount of BGT rewards harvested = amount of iBGT minted
+    function externalVaultRewards(
+        RewardsStorage storage $,
+        IBerachainRewardsVault vault,
+        address user
+    ) external view returns (uint256 iBgtAmount) {
+        // Ensure the vault is valid
+        if (address(vault) == address(0)) {
+            revert Errors.VaultNotSupported();
+        }
+
+        // check infarred is an operator for user
+        if (vault.operator(user) != address(this)) {
+            revert Errors.InvalidOperator();
+        }
+
+        // Claim the BGT rewards on behalf of user.
+        uint256 bgtAmt = vault.earned(user);
+
+        // If no BGT rewards were received, exit early
+        if (bgtAmt == 0) return bgtAmt;
+
+        // Calculate the voter and protocol fees to charge on the rewards
+        (iBgtAmount, , ) = chargedFeesOnRewards(
+            bgtAmt,
+            $.fees[uint256(ConfigTypes.FeeType.HarvestVaultFeeRate)],
+            $.fees[uint256(ConfigTypes.FeeType.HarvestVaultProtocolRate)]
+        );
     }
 
     /// @notice Harvests the accrued BGT rewards to a vault.
@@ -447,16 +575,23 @@ library RewardsLib {
         IInfraredBGT(ibgt).mint(address(this), bgtAmt);
 
         // Calculate the voter and protocol fees to charge on the rewards
-        (uint256 _amt, uint256 _amtVoter, uint256 _amtProtocol) =
-        chargedFeesOnRewards(
-            bgtAmt,
-            $.fees[uint256(ConfigTypes.FeeType.HarvestVaultFeeRate)],
-            $.fees[uint256(ConfigTypes.FeeType.HarvestVaultProtocolRate)]
-        );
+        (
+            uint256 _amt,
+            uint256 _amtVoter,
+            uint256 _amtProtocol
+        ) = chargedFeesOnRewards(
+                bgtAmt,
+                $.fees[uint256(ConfigTypes.FeeType.HarvestVaultFeeRate)],
+                $.fees[uint256(ConfigTypes.FeeType.HarvestVaultProtocolRate)]
+            );
 
         // Distribute the fees on the rewards.
         _distributeFeesOnRewards(
-            $.protocolFeeAmounts, voter, ibgt, _amtVoter, _amtProtocol
+            $.protocolFeeAmounts,
+            voter,
+            ibgt,
+            _amtVoter,
+            _amtProtocol
         );
 
         if (_amt > 0) {
@@ -490,8 +625,8 @@ library RewardsLib {
             address _token = _tokens[i];
 
             // Calculate the amount of the token to forward to the bribe collector = balance of this address - existing protocol fees
-            uint256 _amount = ERC20(_token).balanceOf(address(this))
-                - $.protocolFeeAmounts[_token];
+            uint256 _amount = ERC20(_token).balanceOf(address(this)) -
+                $.protocolFeeAmounts[_token];
 
             // Store the token and amount in the arrays
             amounts[i] = _amount;
@@ -520,18 +655,21 @@ library RewardsLib {
         address voter,
         uint256 rewardsDuration
     ) external returns (address _token, uint256 _amount) {
-        IBerachainBGTStaker _bgtStaker =
-            IBerachainBGTStaker(IBerachainBGT(bgt).staker());
+        IBerachainBGTStaker _bgtStaker = IBerachainBGTStaker(
+            IBerachainBGT(bgt).staker()
+        );
         _token = address(_bgtStaker.rewardToken());
 
         // @dev claim the boost rewards and use return value to calculate the amount
         _amount = _bgtStaker.getReward();
 
         // get total and protocol fee rates
-        uint256 feeTotal =
-            $.fees[uint256(ConfigTypes.FeeType.HarvestBoostFeeRate)];
-        uint256 feeProtocol =
-            $.fees[uint256(ConfigTypes.FeeType.HarvestBoostProtocolRate)];
+        uint256 feeTotal = $.fees[
+            uint256(ConfigTypes.FeeType.HarvestBoostFeeRate)
+        ];
+        uint256 feeProtocol = $.fees[
+            uint256(ConfigTypes.FeeType.HarvestBoostProtocolRate)
+        ];
 
         _handleTokenRewardsForVault(
             $,
@@ -581,14 +719,17 @@ library RewardsLib {
         // Redeem WBERA for BERA and send to IBERA receivor for compounding
         IWBERA(wbera).withdraw(amtInfraredBERA);
         SafeTransferLib.safeTransferETH(
-            IInfraredBERA(ibera).receivor(), amtInfraredBERA
+            IInfraredBERA(ibera).receivor(),
+            amtInfraredBERA
         );
 
         // Get Fee totals (voter + protocol)
-        uint256 feeTotal =
-            $.fees[uint256(ConfigTypes.FeeType.HarvestBribesFeeRate)];
-        uint256 feeProtocol =
-            $.fees[uint256(ConfigTypes.FeeType.HarvestBribesProtocolRate)];
+        uint256 feeTotal = $.fees[
+            uint256(ConfigTypes.FeeType.HarvestBribesFeeRate)
+        ];
+        uint256 feeProtocol = $.fees[
+            uint256(ConfigTypes.FeeType.HarvestBribesProtocolRate)
+        ];
 
         // Charge fees and notify rewards
         _handleTokenRewardsForVault(
