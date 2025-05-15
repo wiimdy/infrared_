@@ -1,4 +1,3 @@
-
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
@@ -17,3 +16,6 @@
 [submodule "lib/prb-test"]
 	path = lib/prb-test
 	url = https://github.com/PaulRBerg/prb-test
+[submodule "lib/@spherex-xyz"]
+	path = lib/@spherex-xyz
+	url = https://github.com/spherex-xyz/spherex-contracts
